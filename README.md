@@ -15,4 +15,4 @@ In order to track when specific events occur in the logs there is a tool called 
 
 Run this with an argument of what event message you would like in the logs and it will put the event into the appropriate logs. 
 
-Formatting for the event log will always be `****************EVENT****************`
+Formatting for the event log will always be `----------EVENT----------`
