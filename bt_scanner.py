@@ -3,6 +3,7 @@ from bleak import BleakScanner
 import os
 from datetime import datetime
 import time
+import subprocess
 
 addresses = []
 
@@ -15,12 +16,24 @@ dataFolder = os.path.join(os.getcwd(), 'data')
 deviceFile = os.path.join(os.getcwd(), 'data', 'devices.log')
 addressesFile = os.path.join(dataFolder, 'knownAddresses.log')
 lastSeenFile = os.path.join(dataFolder, 'lastSeen.log')
+oldLogFolder = os.path.join(dataFolder, 'oldLogs/')
+apiFolder = os.path.join(os.getcwd(), 'publicAPI/')
+pythonBin = os.path.join(os.getcwd(), 'venv', 'bin', 'python3')
+apiApp = os.path.join(apiFolder, 'main.py')
+
+def runAPI():
+	try:
+		subprocess.Popen([pythonBin, apiApp], cwd=apiFolder)
+	except:
+		pass
+
 
 def init():
 	global addresses, lastSeen
-
+	runAPI()
 	if not os.path.exists(dataFolder):
 		os.mkdir(dataFolder)
+		os.mkdir(oldLogFolder)
 		with open(deviceFile, 'w') as file:
 			file.write("TIME,NAME,ADDRESS,RSSI/SIGNAL\n") #Writing headers for device file
 
@@ -38,7 +51,6 @@ def init():
 				firstLine = False
 	if os.path.isfile(lastSeenFile):
 		with open(lastSeenFile, 'r') as file:
-			firstLine = True;
 			for line in file:
 				address = line.split(',')[0]
 				time = line.split(',')[1]
@@ -53,7 +65,7 @@ def handleNewDevice(device, data):
         lastSeen[device.address] = datetime.now()
 
         with open(addressesFile, 'a') as file:
-                file.write(f"{device.address},{datetime.now()}\n")
+                file.write(f"{device.address},{device.name},{datetime.now()}\n")
 
 def handleOldDevice(device, data):
 	if (datetime.now() - lastSeen[device.address]).total_seconds() > limit:
@@ -62,6 +74,21 @@ def handleOldDevice(device, data):
 		with open(deviceFile, 'a') as file:
 			file.write(f"{datetime.now()},{device.name},{device.address},{data.rssi}\n")
 
+def checkLogSize():
+	'''Function to handle when the log is getting too large. This will read the size of the log 
+	and if the log is too large it will only write the most recent logs to a new file.'''
+	with open(deviceFile, 'r') as file:
+		count = 0
+		refactor = False
+		for line in file:
+			if count > 1000:
+				refactor = True
+		count += 1
+		if refactor:
+			newFileLocation = os.path.join(dataFolder, oldLogFolder, datetime.now().strftime("%Y-%m-%d"))
+			os.rename(deviceFile, newFileLocation)
+			with open(deviceFile, 'w') as file:
+				file.write("TIME,NAME,ADDRESS,RSSI/SIGNAL\n")
 def callback(device, data):
 	global addresses, lastSeen
 
@@ -84,6 +111,11 @@ async def main():
 	await scanner.stop()
 
 init()
+cycles = 0
 while True:
+	runAPI()
 	asyncio.run(main())
 	time.sleep(10)
+	if cycles > 60:
+		check_log_size()
+
