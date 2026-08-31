@@ -115,7 +115,7 @@ cycles = 0
 while True:
 	runAPI()
 	asyncio.run(main())
-	time.sleep(10)
+	time.sleep(2)
 	if cycles > 60:
 		check_log_size()
 
